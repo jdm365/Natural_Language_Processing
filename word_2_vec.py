@@ -1,6 +1,4 @@
-from curses import window
 import numpy as np
-from sympy import julia_code
 from tqdm import tqdm
 from itertools import chain
 import random
@@ -201,7 +199,6 @@ if __name__ == '__main__':
     word2vec = Word2Vec(window_size=5, vec_size=50, dataset=dataset)
     runner = SGDWrapper()
     runner.sgd(word2vec, dataset, lr=0.3, decay_rate=0.5, window=word2vec.window_size)
-    
 
 
 
