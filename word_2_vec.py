@@ -123,7 +123,7 @@ class Word2Vec:
     def softmax_loss_and_gradient(self, center_word_vector, outside_word_idx):
         theta = np.dot(self.outside_word_vectors, center_word_vector)
         p = np.zeros((self.vocab_size), dtype=np.float32)
-        p[outside_word_index] = 1.0
+        p[outside_word_idx] = 1.0
         p_hat = softmax(theta)
         loss = -np.sum(p*np.log(p_hat))
         error = p_hat - p
@@ -144,7 +144,7 @@ class Word2Vec:
             J, dJ_dWc, dJ_dWo = self.neg_sampling_loss(center_vector, \
                                             outside_word_idx=idx)
             loss += J
-            grad_center[self.word_map[center]] += dJ_dWc
+            grad_center[self.word_map[center]] += dJ_dWc[0]
             grad_outside += dJ_dWo
         return loss, grad_center, grad_outside
 
