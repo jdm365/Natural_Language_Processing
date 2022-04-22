@@ -83,11 +83,21 @@ class Dataset:
         probs = np.zeros_like(self.vocab, dtype=np.float32)
         for idx, word in enumerate(self.vocab):
             probs[idx] = (self.word_counts[word] / self.length) ** 3/4
-        return probs
+        #return probs
+        table_size = int(1e6)
+        word_table = np.zeros(table_size, dtype=np.int32)
+        samples = probs * table_size
+        w_table_idx = 0
+        for word_idx, sample in enumerate(samples):
+            for _ in range(int(sample)):
+                word_table[w_table_idx] = word_idx
+                w_table_idx += 1
+        return word_table
 
     def sample_word_idx(self):
-        word = np.random.choice(self.vocab, p=self.weighted_samples)
-        idx = self.word_map[word]
+        #word = np.random.choice(self.vocab, p=self.weighted_samples)
+        #idx = self.word_map[word]
+        idx = np.random.choice(self.weighted_samples)
         return idx
 
     def get_negative_samples(self, outside_word_idx, n_samples=10):
@@ -112,7 +122,7 @@ class Word2Vec:
         self.outside_word_vectors = np.random.normal(size=(self.vocab_size, self.vec_size), \
                                                     loc=0.0, scale=0.01).astype(np.float32)
      
-    def softmax_loss_and_gradient(self, center_word_vector, outside_word_index):
+    def softmax_loss_and_gradient(self, center_word_vector, outside_word_idx):
         theta = np.dot(self.outside_word_vectors, center_word_vector)
         p = np.zeros((self.vocab_size), dtype=np.float32)
         p[outside_word_index] = 1.0
@@ -133,8 +143,8 @@ class Word2Vec:
         grad_outside = np.zeros(self.outside_word_vectors.shape, dtype=np.float32)
 
         for idx in outside_indices:
-            J, dJ_dWc, dJ_dWo = self.softmax_loss_and_gradient(center_vector, \
-                                            outside_word_index=idx)
+            J, dJ_dWc, dJ_dWo = self.neg_sampling_loss(center_vector, \
+                                            outside_word_idx=idx)
             loss += J
             grad_center[self.word_map[center]] += dJ_dWc
             grad_outside += dJ_dWo
@@ -146,7 +156,7 @@ class Word2Vec:
 
         w_c = center_word_vec
         w_o = self.outside_word_vectors[outside_word_idx]
-        w_k = self.outside_word_vectors
+        w_k = self.outside_word_vectors[neg_sample_idx]
 
         theta = np.dot(w_o.T, w_c)
         loss = -np.log(sigmoid(theta)) - np.sum(np.log(sigmoid(-np.dot(w_c, w_k.T))))
@@ -175,7 +185,7 @@ class SGDWrapper:
             grad_c = np.zeros_like((word2vec.center_word_vectors))
             grad_o = np.zeros_like((word2vec.outside_word_vectors))
             for batch in range(self.batch_size):
-                center_word, context = dataset.get_random_context(dataset.augmented_data, window)
+                center_word, context = dataset.get_random_context(window)
                 cost, d_c, d_o = word2vec.skipgram(center_word, context)
                 loss += cost / self.batch_size
                 grad_c += d_c / self.batch_size
@@ -191,3 +201,7 @@ if __name__ == '__main__':
     word2vec = Word2Vec(window_size=5, vec_size=50, dataset=dataset)
     runner = SGDWrapper()
     runner.sgd(word2vec, dataset, lr=0.3, decay_rate=0.5, window=word2vec.window_size)
+    
+
+
+
