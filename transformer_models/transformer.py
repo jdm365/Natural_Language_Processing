@@ -15,8 +15,8 @@ class PositionalEncoder:
         ## returns np.array with dims (batch_size, input_dims, embedding_dims)
         encodings = []
         for i in range(len(input_string)):
-            denominator = (i / 10000) ** (2*self.embedding/self.embedding_dims))
-            encodings.append(i / denominator)
+            denominator = (i / 10000) ** (2*self.embedding/self.embedding_dims)
+            encodings.append(np.sin(i / denominator))
         return np.stack(encodings)
    
 
