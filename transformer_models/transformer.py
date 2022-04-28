@@ -11,15 +11,18 @@ class PositionalEncoder:
         self.embedding = np.linspace(0, embedding_dims)
         self.embedding_dims = embedding_dims
 
-    def encode(self, input_string):
+    def encode(self, tokenized_inputs):
+        ## input np.array with dims (batch_size, input_dims, embedding_dims)
         ## returns np.array with dims (batch_size, input_dims, embedding_dims)
         encodings_encoder = []
         encodings_decoder = []
-        for i in range(len(input_string)):
+        for i in range(tokenized_inputs.shape[-2]):
             denominator = (i / 10000) ** (2*self.embedding/self.embedding_dims)
             encodings_encoder.append(np.sin(i / denominator))
             encodings_decoder.append(np.cos(i / denominator))
-        return np.stack(encodings_encoder), np.stack(encodings_decoder)
+        pos_enc = np.stack(encodings_encoder)
+        pos_dec = np.stack(encodings_decoder)
+        return np.multiply(pos_enc, tokenized_inputs), np.multiply(pos_dec, tokenized_inputs)
    
 
 class MultiHeadedAttention(nn.Module):
