@@ -13,11 +13,13 @@ class PositionalEncoder:
 
     def encode(self, input_string):
         ## returns np.array with dims (batch_size, input_dims, embedding_dims)
-        encodings = []
+        encodings_encoder = []
+        encodings_decoder = []
         for i in range(len(input_string)):
             denominator = (i / 10000) ** (2*self.embedding/self.embedding_dims)
-            encodings.append(np.sin(i / denominator))
-        return np.stack(encodings)
+            encodings_encoder.append(np.sin(i / denominator))
+            encodings_decoder.append(np.cos(i / denominator))
+        return np.stack(encodings_encoder), np.stack(encodings_decoder)
    
 
 class MultiHeadedAttention(nn.Module):
@@ -149,20 +151,20 @@ class Transformer(nn.Module):
         self.to(self.device)
 
     def forward(self, inputs):
-        encoded_vectors = self.pos_encoder.forward(inputs)
+        encoded_vectors_enc, encoded_vectors_dec = self.pos_encoder.forward(inputs)
 
-        encoder_outputs = encoded_vectors
+        encoder_outputs = encoded_vectors_enc
         for _ in range(self.n_blocks):
             encoder_outputs = self.encoder.forward(encoder_outputs)
         
-        decoder_outputs = encoder_vectors
+        decoder_outputs = encoded_vectors_dec
         for _ in range(self.n_blocks):
             decoder_outputs = self.decoder(encoder_outputs, decoder_outputs)
         
         probs = F.softmax(self.final_proj(decoder_outputs), dim=-1)
         return probs
 
-## TODO: Create tokenization module and add main file. Also edit input data to shift over for decoder.
+## TODO: Create tokenization module and add main file.
 ##       Look into adding CLS token
 
 
