@@ -11,18 +11,18 @@ class PositionalEncoder:
         self.embedding = np.linspace(0, embedding_dims)
         self.embedding_dims = embedding_dims
 
-    def encode(self, tokenized_inputs):
-        ## input np.array with dims (batch_size, input_dims, embedding_dims)
+    def encode(self, tokenized_inputs_enc, tokenized_inputs_dec):
+        ## inputs np.array with dims (batch_size, input_dims, embedding_dims)
         ## returns np.array with dims (batch_size, input_dims, embedding_dims)
         encodings_encoder = []
         encodings_decoder = []
-        for i in range(tokenized_inputs.shape[-2]):
+        for i in range(tokenized_inputs_enc.shape[-2]):
             denominator = (i / 10000) ** (2*self.embedding/self.embedding_dims)
             encodings_encoder.append(np.sin(i / denominator))
             encodings_decoder.append(np.cos(i / denominator))
         pos_enc = np.stack(encodings_encoder)
         pos_dec = np.stack(encodings_decoder)
-        return np.multiply(pos_enc, tokenized_inputs), np.multiply(pos_dec, tokenized_inputs)
+        return np.multiply(pos_enc, tokenized_inputs_enc), np.multiply(pos_dec, tokenized_inputs_dec)
    
 
 class MultiHeadedAttention(nn.Module):
@@ -169,7 +169,10 @@ class Transformer(nn.Module):
 
 ## TODO: Create tokenization module and add main file.
 ##       Look into adding CLS token
-
+##       Encoder-Decoder for language translation type tasks. 
+##       Encoder: sequence classification type tasks
+##       Decoder: language generation
+##       Encoder-Decoder: text generation w/ specific attention to input
 
 
 
