@@ -1,28 +1,30 @@
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
 import pandas as pd
 import numpy as np
 
 
 class PositionalEncoder:
-    def __init__(self, input_dims, embedding_dims):
+    def __init__(self, input_dims, embedding_dims, encoder=True):
         self.input_dims = input_dims
         self.embedding = np.linspace(0, embedding_dims)
         self.embedding_dims = embedding_dims
+        self.encoder = encoder
 
-    def encode(self, tokenized_inputs_enc, tokenized_inputs_dec):
+    def encode(self, tokenized_inputs):
         ## inputs np.array with dims (batch_size, input_dims, embedding_dims)
         ## returns np.array with dims (batch_size, input_dims, embedding_dims)
-        encodings_encoder = []
-        encodings_decoder = []
+        encodings = []
         for i in range(tokenized_inputs_enc.shape[-2]):
             denominator = (i / 10000) ** (2*self.embedding/self.embedding_dims)
-            encodings_encoder.append(np.sin(i / denominator))
-            encodings_decoder.append(np.cos(i / denominator))
+            if self.encoder:
+                encodings.append(np.sin(i / denominator))
+            else:
+                encodings.append(np.cos(i / denominator))
         pos_enc = np.stack(encodings_encoder)
-        pos_dec = np.stack(encodings_decoder)
-        return np.multiply(pos_enc, tokenized_inputs_enc), np.multiply(pos_dec, tokenized_inputs_dec)
+        return np.multiply(pos_enc, tokenized_inputs)
    
 
 class MultiHeadedAttention(nn.Module):
@@ -141,11 +143,14 @@ class Decoder(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, input_dims, embedding_dims, n_heads, output_dims, lr, n_blocks=4):
+    def __init__(self, input_dims, embedding_dims, n_heads, output_dims, lr, n_blocks=4, decoder=False):
         super(Transformer, self).__init__()
-        self.pos_encoder = PositionalEncoder(input_dims, embedding_dims)
+        self.decoder = decoder
+        self.pos_encoder_enc = PositionalEncoder(input_dims, embedding_dims, encoder=True)
         self.encoder = Encoder(input_dims, embedding_dims, n_heads)
-        self.decoder = Decoder(input_dims, embedding_dims, n_heads)
+        if decoder:
+            self.pos_encoder_dec = PositionalEncoder(input_dims, embedding_dims, encoder=False)
+            self.decoder = Decoder(input_dims, embedding_dims, n_heads)
         self.final_proj = nn.Linear(embedding_dims, output_dims)
         self.n_blocks = n_blocks
 
@@ -154,21 +159,24 @@ class Transformer(nn.Module):
         self.to(self.device)
 
     def forward(self, inputs):
-        encoded_vectors_enc, encoded_vectors_dec = self.pos_encoder.forward(inputs)
-
-        encoder_outputs = encoded_vectors_enc
+        encoder_outputs = self.pos_encoder_enc.forward(inputs)
         for _ in range(self.n_blocks):
             encoder_outputs = self.encoder.forward(encoder_outputs)
+
+        if not self.decoder:
+            probs = F.softmax(self.final_proj(encoder_outputs), dim=-1)
+            return probs
         
-        decoder_outputs = encoded_vectors_dec
+        decoder_outputs = self.pos_encoder_enc.forward(inputs)
         for _ in range(self.n_blocks):
             decoder_outputs = self.decoder(encoder_outputs, decoder_outputs)
-        
         probs = F.softmax(self.final_proj(decoder_outputs), dim=-1)
         return probs
 
 ## TODO: Create tokenization module and add main file.
 ##       Look into adding CLS token
+
+
 ##       Encoder-Decoder for language translation type tasks. 
 ##       Encoder: sequence classification type tasks
 ##       Decoder: language generation
